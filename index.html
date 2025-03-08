@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Key Exchange</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Dark mode CSS -->
+    <style>
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #212529;
+            --bs-body-color: #dee2e6;
+        }
+        .encrypted {
+            background-color: rgba(0, 123, 255, 0.1);
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body data-bs-theme="dark">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">Secure Key Exchange</h1>
+            </div>
+        </div>
+
+        <!-- Authentication UI -->
+        <div id="auth-section" class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div id="login-form">
+                            <h3>Login / Register</h3>
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <button id="login-btn" class="btn btn-primary me-2">Login</button>
+                            <button id="register-btn" class="btn btn-outline-primary">Register</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application UI (hidden until authenticated) -->
+        <div id="app-section" class="row mt-4" style="display: none;">
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Your Keys</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="key-name" class="form-label">Key Name</label>
+                            <input type="text" class="form-control" id="key-name" placeholder="Main key">
+                        </div>
+                        <button id="generate-key-btn" class="btn btn-primary mb-3">Generate New Key Pair</button>
+                        <div id="keys-list" class="list-group">
+                            <!-- Keys will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Contacts</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="contact-search" placeholder="Search users...">
+                        </div>
+                        <div id="contacts-list" class="list-group">
+                            <!-- Contacts will be listed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>Encrypt Message</h4>
+                        <div>
+                            <label for="recipient-key" class="form-label me-2">Recipient Key:</label>
+                            <select id="recipient-key" class="form-select form-select-sm d-inline-block w-auto">
+                                <option value="">Select recipient key</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <textarea class="form-control" id="plaintext-message" rows="5" placeholder="Enter your message here"></textarea>
+                        </div>
+                        <button id="encrypt-btn" class="btn btn-primary">Encrypt</button>
+                        <div class="mt-3">
+                            <h5>Encrypted Message:</h5>
+                            <div id="encrypted-output" class="encrypted mt-2">
+                                <!-- Encrypted message will appear here -->
+                            </div>
+                            <button id="copy-encrypted-btn" class="btn btn-sm btn-outline-secondary mt-2">Copy to Clipboard</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>Decrypt Message</h4>
+                        <div>
+                            <label for="decrypt-key" class="form-label me-2">Your Key:</label>
+                            <select id="decrypt-key" class="form-select form-select-sm d-inline-block w-auto">
+                                <option value="">Select your private key</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <textarea class="form-control" id="encrypted-message" rows="5" placeholder="Paste encrypted message here"></textarea>
+                        </div>
+                        <button id="decrypt-btn" class="btn btn-primary">Decrypt</button>
+                        <div class="mt-3">
+                            <h5>Decrypted Message:</h5>
+                            <div id="decrypted-output" class="bg-light p-3 rounded mt-2">
+                                <!-- Decrypted message will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings modal -->
+        <div class="modal fade" id="settings-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="dark-mode-toggle" checked>
+                            <label class="form-check-label" for="dark-mode-toggle">Dark Mode</label>
+                        </div>
+                        <div class="mb-3">
+                            <button id="export-keys-btn" class="btn btn-outline-primary">Export All Keys</button>
+                        </div>
+                        <div class="mb-3">
+                            <label for="import-keys" class="form-label">Import Keys</label>
+                            <input class="form-control" type="file" id="import-keys">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- CryptoJS for encryption -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- JSEncrypt for RSA -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.2.1/jsencrypt.min.js"></script>
+    
+    <!-- App JS -->
+    <script>
+        // User data storage - in a real app, this would be more secure
+        let currentUser = null;
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        
+        // DOM elements
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const generateKeyBtn = document.getElementById('generate-key-btn');
+        const encryptBtn = document.getElementById('encrypt-btn');
+        const decryptBtn = document.getElementById('decrypt-btn');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const copyEncryptedBtn = document.getElementById('copy-encrypted-btn');
+        
+        // Authentication
+        loginBtn.addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (users[username] && users[username].passwordHash === hashPassword(password)) {
+                loginUser(username);
+            } else {
+                alert('Invalid username or password');
+            }
+        });
+        
+        registerBtn.addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                alert('Please enter username and password');
+                return;
+            }
+            
+            if (users[username]) {
+                alert('Username already exists');
+                return;
+            }
+            
+            users[username] = {
+                passwordHash: hashPassword(password),
+                keys: {},
+                contacts: {}
+            };
+            
+            saveUsers();
+            loginUser(username);
+        });
+        
+        // Key management
+        generateKeyBtn.addEventListener('click', () => {
+            const keyName = document.getElementById('key-name').value || 'Key ' + (Object.keys(users[currentUser].keys).length + 1);
+            
+            // Generate RSA key pair
+            const encrypt = new JSEncrypt({default_key_size: 2048});
+            const publicKey = encrypt.getPublicKey();
+            const privateKey = encrypt.getPrivateKey();
+            
+            // Save keys
+            users[currentUser].keys[keyName] = {
+                publicKey,
+                privateKey,
+                createdAt: new Date().toISOString()
+            };
+            
+            saveUsers();
+            updateKeysList();
+            updateKeySelectors();
+        });
+        
+        // Encryption/Decryption
+        encryptBtn.addEventListener('click', () => {
+            const message = document.getElementById('plaintext-message').value;
+            const recipientKeyId = document.getElementById('recipient-key').value;
+            
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            if (!recipientKeyId) {
+                alert('Please select a recipient key');
+                return;
+            }
+            
+            // Find the recipient public key
+            const [username, keyName] = recipientKeyId.split('|');
+            const publicKey = users[username].keys[keyName].publicKey;
+            
+            // Encrypt the message
+            const encrypt = new JSEncrypt();
+            encrypt.setPublicKey(publicKey);
+            
+            // For longer messages, use hybrid encryption (AES + RSA)
+            const aesKey = CryptoJS.lib.WordArray.random(32); // 256-bit AES key
+            const iv = CryptoJS.lib.WordArray.random(16); // initialization vector
+            
+            // Encrypt the message with AES
+            const encrypted = CryptoJS.AES.encrypt(message, aesKey, { iv }).toString();
+            
+            // Encrypt the AES key with RSA
+            const encryptedKey = encrypt.encrypt(aesKey.toString() + '|' + iv.toString());
+            
+            // Combine them
+            const fullEncrypted = JSON.stringify({
+                key: encryptedKey,
+                data: encrypted,
+                to: username,
+                keyName: keyName
+            });
+            
+            document.getElementById('encrypted-output').textContent = fullEncrypted;
+        });
+        
+        decryptBtn.addEventListener('click', () => {
+            const encryptedMessage = document.getElementById('encrypted-message').value;
+            const keyId = document.getElementById('decrypt-key').value;
+            
+            if (!encryptedMessage || !keyId) {
+                alert('Please enter an encrypted message and select your private key');
+                return;
+            }
+            
+            try {
+                const encryptedData = JSON.parse(encryptedMessage);
+                const privateKey = users[currentUser].keys[keyId].privateKey;
+                
+                // Decrypt the AES key with RSA
+                const decrypt = new JSEncrypt();
+                decrypt.setPrivateKey(privateKey);
+                const decryptedKeyData = decrypt.decrypt(encryptedData.key);
+                
+                if (!decryptedKeyData) {
+                    throw new Error('Could not decrypt the message. Wrong key?');
+                }
+                
+                // Split the key and IV
+                const [aesKeyStr, ivStr] = decryptedKeyData.split('|');
+                
+                // Decrypt the message with AES
+                const decrypted = CryptoJS.AES.decrypt(encryptedData.data, 
+                    CryptoJS.enc.Hex.parse(aesKeyStr), 
+                    { iv: CryptoJS.enc.Hex.parse(ivStr) }
+                ).toString(CryptoJS.enc.Utf8);
+                
+                document.getElementById('decrypted-output').textContent = decrypted;
+            } catch (error) {
+                alert('Error decrypting message: ' + error.message);
+            }
+        });
+        
+        // Copy encrypted message
+        copyEncryptedBtn.addEventListener('click', () => {
+            const encryptedText = document.getElementById('encrypted-output').textContent;
+            navigator.clipboard.writeText(encryptedText)
+                .then(() => alert('Copied to clipboard!'))
+                .catch(err => console.error('Failed to copy: ', err));
+        });
+        
+        // Dark mode toggle
+        darkModeToggle.addEventListener('change', () => {
+            if (darkModeToggle.checked) {
+                document.body.setAttribute('data-bs-theme', 'dark');
+            } else {
+                document.body.setAttribute('data-bs-theme', 'light');
+            }
+        });
+        
+        // Helper functions
+        function hashPassword(password) {
+            return CryptoJS.SHA256(password).toString();
+        }
+        
+        function loginUser(username) {
+            currentUser = username;
+            authSection.style.display = 'none';
+            appSection.style.display = 'block';
+            updateKeysList();
+            updateContactsList();
+            updateKeySelectors();
+        }
+        
+        function saveUsers() {
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+        
+        function updateKeysList() {
+            const keysList = document.getElementById('keys-list');
+            keysList.innerHTML = '';
+            
+            const userKeys = users[currentUser].keys;
+            for (const keyName in userKeys) {
+                const keyItem = document.createElement('a');
+                keyItem.href = '#';
+                keyItem.className = 'list-group-item list-group-item-action';
+                
+                const keyHeader = document.createElement('div');
+                keyHeader.className = 'd-flex justify-content-between align-items-center';
+                
+                const keyTitle = document.createElement('h6');
+                keyTitle.className = 'mb-1';
+                keyTitle.textContent = keyName;
+                
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'btn btn-sm btn-outline-primary';
+                shareBtn.textContent = 'Share';
+                shareBtn.onclick = (e) => {
+                    e.preventDefault();
+                    const publicKey = userKeys[keyName].publicKey;
+                    navigator.clipboard.writeText(publicKey)
+                        .then(() => alert('Public key copied to clipboard!'))
+                        .catch(err => console.error('Failed to copy: ', err));
+                };
+                
+                keyHeader.appendChild(keyTitle);
+                keyHeader.appendChild(shareBtn);
+                
+                const keyDate = document.createElement('small');
+                keyDate.className = 'text-muted';
+                keyDate.textContent = 'Created: ' + new Date(userKeys[keyName].createdAt).toLocaleDateString();
+                
+                keyItem.appendChild(keyHeader);
+                keyItem.appendChild(keyDate);
+                keysList.appendChild(keyItem);
+            }
+        }
+        
+        function updateContactsList() {
+            const contactsList = document.getElementById('contacts-list');
+            contactsList.innerHTML = '';
+            
+            // Add all users except current one
+            for (const username in users) {
+                if (username === currentUser) continue;
+                
+                const userKeys = users[username].keys;
+                for (const keyName in userKeys) {
+                    const contactItem = document.createElement('a');
+                    contactItem.href = '#';
+                    contactItem.className = 'list-group-item list-group-item-action';
+                    
+                    const contactTitle = document.createElement('h6');
+                    contactTitle.className = 'mb-1';
+                    contactTitle.textContent = `${username} (${keyName})`;
+                    
+                    const keyInfo = document.createElement('small');
+                    keyInfo.className = 'text-muted';
+                    keyInfo.textContent = 'Public key available';
+                    
+                    contactItem.appendChild(contactTitle);
+                    contactItem.appendChild(keyInfo);
+                    contactsList.appendChild(contactItem);
+                }
+            }
+        }
+        
+        function updateKeySelectors() {
+            const recipientKeySelect = document.getElementById('recipient-key');
+            const decryptKeySelect = document.getElementById('decrypt-key');
+            
+            // Clear existing options
+            recipientKeySelect.innerHTML = '<option value="">Select recipient key</option>';
+            decryptKeySelect.innerHTML = '<option value="">Select your private key</option>';
+            
+            // Add recipient options (other users' public keys)
+            for (const username in users) {
+                if (username === currentUser) continue;
+                
+                const userKeys = users[username].keys;
+                for (const keyName in userKeys) {
+                    const option = document.createElement('option');
+                    option.value = `${username}|${keyName}`;
+                    option.textContent = `${username} (${keyName})`;
+                    recipien
